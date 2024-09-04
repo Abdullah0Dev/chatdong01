@@ -11,18 +11,31 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 import images from '../constants/images';
 import Animated from 'react-native-reanimated';
 import BottomSheet, {BottomSheetScrollView} from '@gorhom/bottom-sheet';
-import {useNavigation} from '@react-navigation/native';
+import {RouteProp, useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../types';
-const MessagesTab = () => {
-  const navigation =
-    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+import { io } from 'socket.io-client';
+
+type ScreenRouteProp = RouteProp<RootStackParamList, 'Home'>;
+type MessageTabProps = {
+  route: ScreenRouteProp;
+};
+interface MessagesTabProps {
+  name: string;
+}
+
+const SOCKET_URL = 'http://192.168.1.8:4000';
+const socket = io(SOCKET_URL);
+const MessagesTab: React.FC<MessagesTabProps> = ({ name }) => {
+ 
+  console.log(name);
+  
   const sheetRef = useRef<BottomSheet>(null);
   return (
     <SafeAreaView className="bg-primary h-full">
       <View className="flex flex-row justify-between items-center mx-3">
         <View>
-          <Text className="text-base text-black-200">Welcome OJ 👋</Text>
+          <Text className="text-base text-black-200">Welcome {name} 👋</Text>
           <Text className="text-3xl font-bold text-white">Chatdong</Text>
         </View>
         <View className="flex items-center justify-center bg-black-200/30 p-2 rounded-full">
@@ -73,10 +86,10 @@ const MessagesTab = () => {
       {/* chats => */}
       <BottomSheet
         ref={sheetRef}
-        snapPoints={['65%', '85%']}
+        snapPoints={['65%', '86%']}
         index={0}
         backgroundStyle={{borderRadius: 40}}>
-        <BottomSheetScrollView style={{flex: 1, padding: 10}}>
+        <View style={{flex: 1, padding: 10}}>
           <View className="flex flex-row justify-between mx-5 items-center">
             <Text className="text-black-100/80 text-2xl font-semibold">
               Recent Chat
@@ -95,12 +108,12 @@ const MessagesTab = () => {
             </View>
           </View>
           <FlatList
-            data={[1, 2, 3, 4]}
-            renderItem={({item}) => <ChatItem />} // name={item.name} message={item.message} time={item.time} image={item.image}
+            data={chatGroups}
+            renderItem={({item}) => <ChatItem item={item} username={name} />} // name={item.name} message={item.message} time={item.time} image={item.image}
             keyExtractor={(_, index) => index.toString()}
             ItemSeparatorComponent={() => <View className="h-5" />}
           />
-        </BottomSheetScrollView>
+        </View>
       </BottomSheet>
     </SafeAreaView>
   );
@@ -113,31 +126,70 @@ interface StoryDataProp {
   backgroundColor: string;
   emoji: string;
 }
-const ChatItem = () => {
+
+// Define the props interface
+interface ChatItemProps {
+  item: ChatGroupProps;
+  username: string;
+}
+// Define the chat group props interface
+interface ChatGroupProps {
+  emoji: string;
+  name: string; 
+  shortDescription: string;
+  btn: string;
+  bg?: string;
+}
+
+const ChatItem: React.FC<ChatItemProps> = ({item, username}) => {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
+  const handleJoinChat = () => {
+    // Join the chat room
+    socket.emit('joinRoom', item.name);
+
+    // Navigate to the ChatScreen with the chat group name
+    navigation.navigate('Chat', { groupName: item.name, username: username });
+  };
   return (
     <TouchableOpacity
-      onPress={() => navigation.navigate('Chat')}
+      onPress={handleJoinChat}
       className="flex flex-row justify-between mx-5 items-center">
       {/* profile + name +message */}
       <View className="flex flex-row justify-between gap-x-2 items-center">
         <View
           className="flex justify-center items-center p-3 rounded-full "
-          style={{backgroundColor: '#FFF6D8'}}>
-          <Text className="text-3xl object-contain">🏀 </Text>
+          style={{backgroundColor: item?.bg}}>
+          <Text className="text-3xl object-contain">{item.emoji}</Text>
         </View>
         {/* message + name */}
-        <View className="flex items">
-          <Text className="text-black-100 font-bold text-xl"> Dona </Text>
-          <Text className="text-black-200"> Hey, what's up? </Text>
+        <View className="flex items-start">
+          <Text className="text-black-100 font-bold text-xl">{item.name}</Text>
+          <Text className="text-black-200">{item.shortDescription}</Text>
         </View>
       </View>
-      <Text className="text-black-200"> 03:00 </Text>
+      <Text className="text-black-200"> {item.btn} </Text>
     </TouchableOpacity>
   );
 };
+
+const chatGroups: ChatGroupProps[] = [
+  { 
+    name: 'React Native Squad',
+    shortDescription: 'React Native tips by Web Minds ⚛️ 🚀',
+    btn: '03:00',
+    emoji: '⚛️',
+    bg: '#9D3CBA',
+  },
+  { 
+    name: 'Full Stack Fam',
+    shortDescription: 'Chill dev talk - sub👇 to Web Minds 💻',
+    btn: '03:00',
+    emoji: '💻',
+    bg: '#6B6B6B',
+  },
+];
 // dummy data for stories
 const StoryData: StoryDataProp[] = [
   {

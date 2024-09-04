@@ -1,174 +1,363 @@
-import React, { useRef, useState } from 'react';
+import React, {useRef, useState, useEffect} from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   Image,
   TextInput,
-  FlatList,
-  ListRenderItem,
+  StyleSheet,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import BottomSheet from '@gorhom/bottom-sheet';
-import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
+import {SafeAreaView} from 'react-native-safe-area-context';
+import {RouteProp, useNavigation} from '@react-navigation/native';
+import {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import BottomSheet, {
+  BottomSheetFlatList,
+  BottomSheetFlatListMethods,
+} from '@gorhom/bottom-sheet';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+import io from 'socket.io-client';
 import images from '../constants/images';
-import { RootStackParamList } from '../types';
+import {RootStackParamList} from '../types';
+import axios from 'axios';
+import {launchCamera} from 'react-native-image-picker';
+
+const SOCKET_URL = 'http://192.168.1.8:4000';
+const socket = io(SOCKET_URL);
 
 interface Message {
-  id: number;
-  text: string;
+  message: string;
   sender: 'me' | 'other';
   timestamp: string;
 }
 
-const ChatScreen: React.FC = () => {
-  const sheetRef = useRef<BottomSheet>(null);
-  const flatListRef = useRef<FlatList<Message>>(null);
-  const [newMessage, setNewMessage] = useState<string>('');
-  const [messages, setMessages] = useState<Message[]>([
-    { id: 1, text: "Hi buddy, what's up?", sender: 'other', timestamp: '03:00' },
-    { id: 2, text: 'Not much, just coding!', sender: 'me', timestamp: '03:01' },
-    { id: 3, text: 'Nice! Keep it up.', sender: 'other', timestamp: '03:02' },
-    { id: 4, text: 'Thanks!', sender: 'me', timestamp: '03:03' },
-  ]);
+type ScreenRoute = RouteProp<RootStackParamList, 'Chat'>;
+type ChatScreenProp = {
+  route: ScreenRoute;
+};
 
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+const ChatScreen: React.FC<ChatScreenProp> = ({route}) => {
+  const {groupName, username} = route.params;
+  const [isTyping, setIsTyping] = useState(false);
+  const [newMessage, setNewMessage] = useState('');
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const sheetRef = useRef<BottomSheet>(null);
+  const flatListRef = useRef<BottomSheetFlatListMethods>(null);
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
+  useEffect(() => {
+    socket.emit('joinRoom', groupName);
+
+    socket.on('userTyping', (data) => {
+      if (data.groupName === groupName) {
+        setIsTyping(true);
+        setTimeout(() => {
+          setIsTyping(false);
+        }, 2000);
+      }
+    });
+
+    socket.on('newMessage', (message) => {
+      setMessages((prevMessages) => [...prevMessages, message]);
+    });
+
+    return () => {
+      socket.off('userTyping');
+      socket.off('newMessage');
+    };
+  }, [groupName]);
+
+  useEffect(() => {
+    const fetchMessages = async () => {
+      try {
+        const response = await axios.get(
+          `http://192.168.1.8:4000/api/messages/`
+        );
+        setMessages(response.data);
+      } catch (error) {
+        console.error('Error fetching messages:', error);
+      }
+    };
+    fetchMessages();
+  }, [groupName]);
+
+  const handleTyping = () => {
+    socket.emit('typing', {groupName});
+  };
 
   const handleSendMessage = () => {
     if (newMessage.trim()) {
-      const newMessageData: Message = {
-        id: messages.length + 1,
-        text: newMessage,
-        sender: 'me',
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      const messageData = {
+        message: newMessage,
+        sender: username,
+        timestamp: new Date().toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+        groupName,
       };
-      setMessages((prevMessages) => [...prevMessages, newMessageData]);
-      setNewMessage(''); // Clear the input after sending
-
-      // Scroll to the latest message
-      setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
-      }, 100);
+      socket.emit('newMessage', messageData);
+      setNewMessage('');
     }
   };
 
-  // Initialize shared values and animation styles outside the renderItem function
+  const handleUploadFile = async () => {
+    const result = await launchCamera({
+      mediaType: 'photo',
+      quality: 1,
+    });
+
+    if (!result.didCancel && !result.errorCode && result.assets?.length) {
+      const image = result.assets[0];
+      setSelectedImage(image.uri || null);
+      console.log('Selected Image:', image);
+    } else {
+      console.error('Image selection failed or was cancelled.');
+    }
+  };
+
   const opacity = useSharedValue(0);
   const translateY = useSharedValue(20);
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
-      opacity: withTiming(opacity.value, { duration: 500 }),
-      transform: [{ translateY: withSpring(translateY.value) }],
+      opacity: withTiming(opacity.value, {duration: 500}),
+      transform: [{translateY: withSpring(translateY.value)}],
     };
   });
 
-  // Trigger animation on mount for each message
-  React.useEffect(() => {
+  useEffect(() => {
     opacity.value = 1;
     translateY.value = 0;
   }, [messages]);
 
-  const renderItem: ListRenderItem<Message> = ({ item }) => {
-    return (
-      <Animated.View style={[animatedStyle, { marginBottom: 10 }]}>
-        <View
-          className={`${
-            item.sender === 'me' ? 'self-end bg-secondary' : 'self-start bg-accent'
-          } mt-2 w-[60%] px-5 py-2 rounded-3xl`}>
-          <Text className="text-base">{item.text}</Text>
-        </View>
-        <Text
-          className={`text-xs mt-1 ${
-            item.sender === 'me' ? 'self-end' : 'self-start'
-          } text-black-200`}>
-          {item.timestamp}
-        </Text>
-      </Animated.View>
-    );
-  };
+  const renderItem = ({item}: {item: Message}) => (
+    <Animated.View style={[animatedStyle, styles.messageContainer]}>
+      <View
+        style={[
+          styles.messageBubble,
+          item.sender === username ? styles.selfMessage : styles.otherMessage,
+        ]}
+      >
+        <Text style={styles.messageText}>{item.message}</Text>
+      </View>
+      <Text
+        style={[
+          styles.timestamp,
+          item.sender === username ? styles.selfTimestamp : styles.otherTimestamp,
+        ]}
+      >
+        {item.timestamp}
+      </Text>
+    </Animated.View>
+  );
 
   return (
-    <SafeAreaView className="bg-primary h-full">
-      <View className="flex flex-row justify-around items-center">
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
-          className="bg-black-200/20 p-3 flex items-center rounded-full justify-center">
-          <Image
-            className="w-6 h-6"
-            resizeMode="contain"
-            source={images.leftChevron}
-          />
+          style={styles.backButton}
+        >
+          <Image style={styles.icon} resizeMode="contain" source={images.leftChevron} />
         </TouchableOpacity>
 
-        <View className="flex flex-row justify-between gap-x-3 items-center">
-          <View
-            className="flex justify-center items-center p-3 rounded-full "
-            style={{ backgroundColor: '#FFF6D8' }}>
-            <Text className="text-3xl object-contain">🏀 </Text>
+        <View style={styles.groupInfo}>
+          <View style={styles.groupIconContainer}>
+            <Text style={styles.groupIcon}>🏀</Text>
           </View>
-          <View className="flex items">
-            <Text className="text-white font-bold text-xl">Dumb Chat</Text>
-            <Text className="text-black-200">online</Text>
+          <View>
+            <Text style={styles.groupName}>Dumb Chat</Text>
+            <Text style={styles.status}>online</Text>
           </View>
         </View>
 
-        <Image className="w-6 h-6" resizeMode="contain" source={images.menu} />
+        <Image style={styles.icon} resizeMode="contain" source={images.menu} />
       </View>
 
       <BottomSheet
         ref={sheetRef}
         snapPoints={['85%']}
         index={0}
-        backgroundStyle={{ borderRadius: 40 }}>
-        <BottomSheetScrollView style={{ flex: 1, padding: 10, marginBottom: 100 }}>
-          <Text className="text-lg self-center text-center px-3 py-2 rounded-full text-white bg-purple">
-            today
-          </Text>
-
-          <FlatList
-            ref={flatListRef}
-            data={messages}
-            keyExtractor={(item) => item.id.toString()}
-            renderItem={renderItem}
-            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-          />
-        </BottomSheetScrollView>
+        backgroundStyle={styles.bottomSheet}
+      >
+        <BottomSheetFlatList
+          style={styles.messagesList}
+          ref={flatListRef}
+          data={messages}
+          keyExtractor={(item, index) => index.toString()}
+          renderItem={renderItem}
+          ListHeaderComponent={
+            <Text style={styles.todayHeader}>today</Text>
+          }
+          onContentSizeChange={() =>
+            flatListRef.current?.scrollToEnd({animated: true})
+          }
+        />
       </BottomSheet>
 
-      <View className="bg-secondary flex flex-row justify-between gap-x-2 w-[93%] self-center bottom-9 absolute px-1 rounded-full py-2">
-        <View className="flex flex-row items-center w-[70%]">
-          <TouchableOpacity
-            className="bg-pink p-3 flex items-center rounded-full justify-center">
-            <Image className="w-6 h-6" resizeMode="contain" source={images.mic} />
-          </TouchableOpacity>
+      <View style={styles.typingIndicator}>
+        {isTyping && (
+          <Text style={styles.typingText}>{username} is typing...</Text>
+        )}
+      </View>
 
-          <TextInput
-            placeholder="Message..."
-            placeholderTextColor={'#C5C6CC'}
-            className="flex-start h-6 pl-2"
-            multiline={true}
-            value={newMessage}
-            onChangeText={(text) => setNewMessage(text)}
-          />
-        </View>
+      <View style={styles.inputContainer}>
+        <TouchableOpacity
+          onPress={handleUploadFile}
+          style={styles.uploadButton}
+        >
+          <Image style={styles.icon} resizeMode="contain" source={images.mic} />
+        </TouchableOpacity>
+
+        <TextInput
+          placeholder="Message..."
+          placeholderTextColor="#C5C6CC"
+          style={styles.textInput}
+          multiline={true}
+          value={newMessage}
+          onChangeText={setNewMessage}
+          onKeyPress={handleTyping}
+        />
 
         <TouchableOpacity
           onPress={handleSendMessage}
-          className="bg-blue p-3 flex items-center rounded-full justify-center mr-2">
-          <Image className="w-6 h-6" resizeMode="contain" source={images.send} />
+          style={styles.sendButton}
+        >
+          <Image style={styles.icon} resizeMode="contain" source={images.send} />
         </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#0F0704', // primary color
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+  },
+  backButton: {
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    padding: 12,
+    borderRadius: 24,
+  },
+  icon: {
+    width: 24,
+    height: 24,
+  },
+  groupInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  groupIconContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 24,
+    backgroundColor: '#fef3ce', // accent color
+  },
+  groupIcon: {
+    fontSize: 24,
+  },
+  groupName: {
+    color: '#ffffff', // white color
+    fontWeight: 'bold',
+    fontSize: 18,
+  },
+  status: {
+    color: '#8d8d8f', // black-200 color
+    fontSize: 14,
+  },
+  bottomSheet: {
+    borderRadius: 40,
+  },
+  messagesList: {
+    flex: 1,
+    padding: 10,
+    marginBottom: 110
+  },
+  messageContainer: {
+    marginBottom: 10,
+  },
+  messageBubble: {
+    padding: 12,
+    borderRadius: 24,
+    maxWidth: '80%',
+  },
+  selfMessage: {
+    alignSelf: 'flex-end',
+    backgroundColor: '#a5d6a7', // light green for self messages
+  },
+  otherMessage: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#eecbd1', // purple color for other messages
+  },
+  messageText: {
+    fontSize: 16,
+  },
+  timestamp: {
+    fontSize: 12,
+    marginTop: 4,
+  },
+  selfTimestamp: {
+    alignSelf: 'flex-end',
+    color: '#555',
+  },
+  otherTimestamp: {
+    alignSelf: 'flex-start',
+    color: '#888',
+  },
+  todayHeader: {
+    textAlign: 'center',
+    marginVertical: 8,
+    backgroundColor: '#f5f5f5', // secondary color
+    color: '#333',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+  typingIndicator: {
+    padding: 16,
+  },
+  typingText: {
+    color: '#c5c5c5',
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16, 
+    borderRadius: 50,
+    backgroundColor: "#D0C3F0",  
+    marginHorizontal: 12,
+    position: "absolute",
+    bottom: 24
+  },
+  uploadButton: {
+    marginRight: 16,
+  },
+  textInput: {
+    flex: 1,
+    color: '#ffffff',
+    fontSize: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#333',
+    borderRadius: 24,
+  },
+  sendButton: {
+    marginLeft: 16,
+  },
+});
 
 export default ChatScreen;

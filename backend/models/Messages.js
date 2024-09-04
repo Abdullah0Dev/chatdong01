@@ -12,10 +12,12 @@ const messageSchema = new mongoose.Schema({
   },
   sender: {
     type: String,
-    enum: ["me", "other"], // Limits the sender to either 'me' or 'other'
+    // enum: ["me", "other"], // Limits the sender to either 'me' or 'other'
     required: [true, "Sender is required"],
     default: "me",
   },
+  deviceId: String,
+  groupName: String,
 });
 
 module.exports = mongoose.model("Messages", messageSchema);

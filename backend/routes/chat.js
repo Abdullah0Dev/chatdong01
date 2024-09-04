@@ -12,7 +12,7 @@ const router = express.Router();
 // all messages
 router.get("/", getAllMessages);
 // new message
-router.post("/:id", newMessage);
+router.post("/", newMessage);
 // update message
 router.put("/:id", updateMessage);
 // delete message

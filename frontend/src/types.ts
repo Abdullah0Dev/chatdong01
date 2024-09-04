@@ -1,14 +1,12 @@
-
 export type RootStackParamList = {
-    Welcome: undefined;
-    Home: undefined;
-    SignIn: undefined;
-    Chat: undefined;
-  }
+  Welcome: undefined;
+  Home: {name: string};
+  SignIn: undefined;
+  Chat: {groupName: string | undefined, username: string};
+};
 
-
- export type RootTabParamList = {
-  MessagesTab: undefined;
+export type RootTabParamList = {
+  MessagesTab:  {name: string};
   CallsTab: undefined;
   ProfileTab: undefined;
-} 
+};

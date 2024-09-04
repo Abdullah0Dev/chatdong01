@@ -8,9 +8,10 @@ import {
 } from 'react-native';
 import React from 'react';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
-import {RootTabParamList} from '../types';
+import {RootStackParamList, RootTabParamList} from '../types';
 import {CallsTab, MessagesTab, ProfileTab} from '../tabs';
 import images from '../constants/images';
+import { RouteProp, useRoute } from '@react-navigation/native';
 interface TabBarIconProps {
   source: ImageSourcePropType;
   name: string;
@@ -31,9 +32,13 @@ const TabBarIcon: React.FC<TabBarIconProps> = ({source, name, focused}) => {
 const HomeScreen = () => {
   const Tab = createBottomTabNavigator<RootTabParamList>();
   const width = Dimensions.get('window').width;
+  // get the route then the name from it!
+  const route = useRoute<RouteProp<RootStackParamList, "Home">>()
+  const {name} = route.params
   return (
     <>
       <Tab.Navigator
+      initialRouteName='MessagesTab'
         screenOptions={({route}) => ({
           headerShown: false,
           tabBarShowLabel: false,
@@ -60,7 +65,7 @@ const HomeScreen = () => {
           } 
         })}>
         <Tab.Screen name="CallsTab" component={CallsTab} />
-        <Tab.Screen name="MessagesTab" component={MessagesTab} />
+        <Tab.Screen name="MessagesTab" children={() => <MessagesTab name={name} />}  />
         <Tab.Screen name="ProfileTab" component={ProfileTab} />
       </Tab.Navigator>
     </>
