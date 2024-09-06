@@ -4,18 +4,18 @@ const Messages = require("../models/Messages");
 // Get all messages
 const getAllMessages = async (req, res) => {
   try {
-    // console.log(req);
-    
-    // Fetch all messages and sort them by timestamp in ascending order
-    const allMessages = await Messages.find().sort({ timestamp: 1 });
+    const { groupName } = req.params;
+
+    // Fetch messages for the specified group and sort them by timestamp in ascending order
+    const groupMessages = await Messages.find({ groupName }).sort({ timestamp: 1 });
 
     // Check if any messages were found
-    if (!allMessages || allMessages.length === 0) {
-      return res.status(404).json({ message: "No messages found" });
+    if (!groupMessages || groupMessages.length === 0) {
+      return res.status(404).json({ message: "No messages found for this group" });
     }
 
     // Return the messages with a 200 status
-    return res.status(200).json(allMessages);
+    return res.status(200).json(groupMessages);
   } catch (error) {
     console.error("Server Error:", error.message);
     return res

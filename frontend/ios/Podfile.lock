@@ -1520,6 +1520,8 @@ PODS:
     - React-logger (= 0.75.2)
     - React-perflogger (= 0.75.2)
     - React-utils (= 0.75.2)
+  - RNCAsyncStorage (2.0.0):
+    - React-Core
   - RNDeviceInfo (11.1.0):
     - React-Core
   - RNGestureHandler (2.18.1):
@@ -1701,6 +1703,7 @@ DEPENDENCIES:
   - React-utils (from `../node_modules/react-native/ReactCommon/react/utils`)
   - ReactCodegen (from `build/generated/ios`)
   - ReactCommon/turbomodule/core (from `../node_modules/react-native/ReactCommon`)
+  - "RNCAsyncStorage (from `../node_modules/@react-native-async-storage/async-storage`)"
   - RNDeviceInfo (from `../node_modules/react-native-device-info`)
   - RNGestureHandler (from `../node_modules/react-native-gesture-handler`)
   - RNPermissions (from `../node_modules/react-native-permissions`)
@@ -1840,6 +1843,8 @@ EXTERNAL SOURCES:
     :path: build/generated/ios
   ReactCommon:
     :path: "../node_modules/react-native/ReactCommon"
+  RNCAsyncStorage:
+    :path: "../node_modules/@react-native-async-storage/async-storage"
   RNDeviceInfo:
     :path: "../node_modules/react-native-device-info"
   RNGestureHandler:
@@ -1917,6 +1922,7 @@ SPEC CHECKSUMS:
   React-utils: 81a715d9c0a2a49047e77a86f3a2247408540deb
   ReactCodegen: 60973d382704c793c605b9be0fc7f31cb279442f
   ReactCommon: 6ef348087d250257c44c0204461c03f036650e9b
+  RNCAsyncStorage: d35c79ffba52c1013013e16b1fc295aec2feabb6
   RNDeviceInfo: b899ce37a403a4dea52b7cb85e16e49c04a5b88e
   RNGestureHandler: 939f21fabf5d45a725c0bf175eb819dd25cf2e70
   RNPermissions: 55a4e6b749576b8105a5fc3819aa476fc716c15e

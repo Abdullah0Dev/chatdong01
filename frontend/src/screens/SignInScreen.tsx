@@ -5,6 +5,7 @@ import {RootStackParamList} from '../types';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useNavigation} from '@react-navigation/native';
 import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SignInScreen = () => {
   const navigation =
@@ -16,7 +17,7 @@ const SignInScreen = () => {
   const handleSignIn = async () => {
     try {
       // Send request to your backend
-      const response = await axios.post('http://localhost:4000/api/auth', {
+      const response = await axios.post('http://192.168.1.8:4000/api/auth', {
         username: nickname,
         password,
       });
@@ -28,6 +29,7 @@ const SignInScreen = () => {
 
         // Navigate to Home screen
         navigation.navigate('Home', {name: nickname});
+        await AsyncStorage.setItem("name", nickname)
       } else {
         setError(response.data.message);
         console.log(error);

@@ -10,7 +10,7 @@ const router = express.Router();
 
 // routes
 // all messages
-router.get("/", getAllMessages);
+router.get("/:groupName", getAllMessages);
 // new message
 router.post("/", newMessage);
 // update message

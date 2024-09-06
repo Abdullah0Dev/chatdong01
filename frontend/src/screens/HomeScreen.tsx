@@ -6,12 +6,13 @@ import {
   Image,
   ImageSourcePropType,
 } from 'react-native';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import {RootStackParamList, RootTabParamList} from '../types';
 import {CallsTab, MessagesTab, ProfileTab} from '../tabs';
 import images from '../constants/images';
 import { RouteProp, useRoute } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 interface TabBarIconProps {
   source: ImageSourcePropType;
   name: string;
@@ -34,7 +35,19 @@ const HomeScreen = () => {
   const width = Dimensions.get('window').width;
   // get the route then the name from it!
   const route = useRoute<RouteProp<RootStackParamList, "Home">>()
-  const {name} = route.params
+  // const {name} = route.params 
+  const [name, setName] = useState<String | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const checkUser = async () => {
+      const storedName = await AsyncStorage.getItem('name');
+      setName(storedName);
+      setIsLoading(false); // Set loading to false after fetching the name
+    };
+    checkUser();
+  }, []); // Add empty dependency array to avoid re-running the effect on each render
+
   return (
     <>
       <Tab.Navigator

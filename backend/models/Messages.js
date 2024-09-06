@@ -16,6 +16,7 @@ const messageSchema = new mongoose.Schema({
     required: [true, "Sender is required"],
     default: "me",
   },
+  image: String,
   deviceId: String,
   groupName: String,
 });
