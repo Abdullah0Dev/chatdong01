@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "76856427974",
+    "project_id": "chatdong-notify",
+    "storage_bucket": "chatdong-notify.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:76856427974:android:3adfb4edb5acaa35901ec7",
+        "android_client_info": {
+          "package_name": "com.chatdong"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCHeXDpaDc3NlJ2DPemds8uSpI7Uy6S36E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -24,17 +24,19 @@ import io from 'socket.io-client';
 import images from '../constants/images';
 import {RootStackParamList} from '../types';
 import axios from 'axios';
-import {
-  Asset,
-  launchCamera,
-  launchImageLibrary,
-} from 'react-native-image-picker';
+import {Asset, launchImageLibrary} from 'react-native-image-picker';
 import {request, PERMISSIONS, RESULTS} from 'react-native-permissions';
 import {PermissionsAndroid} from 'react-native';
+import CustomKeyboard from '../components/CustomWrapper';
+import {KeyboardAwareScrollView} from 'react-native-keyboard-aware-scroll-view';
+import Notifications from '../Notification';
 
-const SOCKET_URL = 'http://192.168.1.8:4000';
+const SOCKET_URL = `http://${
+  Platform.OS === 'ios' ? 'localhost' : '10.0.2.2'
+}:4000`;
 const socket = io(SOCKET_URL);
-
+// http://${Platform.OS === 'ios' ? "localhost" : "10.0.2.2"}:4000
+// http://${Platform.OS === 'ios' ? "localhost" : "10.0.2.2"}:4000
 interface Message {
   message: string;
   sender: 'me' | 'other';
@@ -46,7 +48,9 @@ type ChatScreenProp = {
 };
 
 const ChatScreen: React.FC<ChatScreenProp> = ({route}) => {
-  const {groupName, username} = route.params;
+  const {groupName, username, background, emoji} = route.params;
+  console.log(`BG:`, background);
+
   const [isTyping, setIsTyping] = useState(false);
   const [newMessage, setNewMessage] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
@@ -54,9 +58,29 @@ const ChatScreen: React.FC<ChatScreenProp> = ({route}) => {
   const sheetRef = useRef<BottomSheet>(null);
   const flatListRef = useRef<BottomSheetFlatListMethods>(null);
   const [finalImage, setFinalImage] = useState<String | null>(null);
+  const [onlineUsers, setOnlineUsers] = useState([]);
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  // Connect to Socket.io
+  useEffect(() => {
+    socket.emit('new-user-add', username);
+    socket.on('get-users', users => {
+      const usersId = users.map(user => user.userId);
+      console.log(`user id`, usersId);
 
+      setOnlineUsers(usersId);
+    });
+  }, [username]);
+
+  useEffect(() => {
+    // Tab has focus
+    const handleFocus = async () => {
+      socket.emit('new-user-add', username);
+      socket.on('get-users', users => {
+        setOnlineUsers(users.userId);
+      });
+    };
+  }, [username]);
   useEffect(() => {
     socket.emit('joinRoom', groupName);
 
@@ -83,11 +107,12 @@ const ChatScreen: React.FC<ChatScreenProp> = ({route}) => {
     const fetchMessages = async () => {
       try {
         const response = await axios.get(
-          `http://192.168.1.8:4000/api/messages/${groupName}`,
+          `http://${
+            Platform.OS === 'ios' ? 'localhost' : '10.0.2.2'
+          }:4000/api/messages/${groupName}`,
         );
         setMessages(response.data);
         // console.log(`Messages`,response.data);
-        
       } catch (error) {
         console.error('Error fetching messages:', error);
       }
@@ -114,9 +139,15 @@ const ChatScreen: React.FC<ChatScreenProp> = ({route}) => {
       socket.emit('newMessage', messageData);
       setNewMessage('');
       setSelectedImage(null);
-      setFinalImage(null)
-      
+      setFinalImage(null);
     }
+    // if( username !== onlineUsers.find(user => user)){
+    Notifications.scheduleNotification(
+      new Date(Date.now() + 5 * 1000),
+      `${username}`,
+      `${newMessage}`,
+    );
+    // }
   };
   // select image
 
@@ -144,18 +175,18 @@ const ChatScreen: React.FC<ChatScreenProp> = ({route}) => {
   };
   const handleUploadFile = async () => {
     const hasStoragePermission = await requestStoragePermission();
-  
+
     if (hasStoragePermission) {
       const result = await launchImageLibrary({
         mediaType: 'photo',
         quality: 1,
       });
-  
+
       if (!result.didCancel && !result.errorCode && result.assets?.length) {
         const image = result.assets[0];
         setSelectedImage(image);
-  console.log(image);
-  
+        console.log(image);
+
         // upload to the backend
         const data = new FormData();
         data.append('myFile', {
@@ -163,19 +194,21 @@ const ChatScreen: React.FC<ChatScreenProp> = ({route}) => {
           type: image.type,
           name: image.fileName,
         });
-  
+
         try {
           const response = await axios.post(
-            'http://192.168.1.8:4000/api/upload/',
+            `http://${
+              Platform.OS === 'ios' ? 'localhost' : '10.0.2.2'
+            }:4000/api/upload/`,
             data,
             {
               headers: {
                 Accept: 'application/json',
                 'Content-Type': 'multipart/form-data',
               },
-            }
+            },
           );
-  
+
           // Assuming the server response contains the URL of the uploaded image
           const uploadedImageUrl = response.data.url; // Adjust this based on your backend response
           console.log('Uploaded Image URL:', uploadedImageUrl);
@@ -190,11 +223,11 @@ const ChatScreen: React.FC<ChatScreenProp> = ({route}) => {
       console.error('Storage permission not granted');
     }
   };
-  
+
   const CancelUploadImage = () => {
-    setSelectedImage(null)
-    setFinalImage(null)
-  }
+    setSelectedImage(null);
+    setFinalImage(null);
+  };
 
   // const handleUploadFile = async () => {
   //   const result = await launchCamera({
@@ -225,6 +258,9 @@ const ChatScreen: React.FC<ChatScreenProp> = ({route}) => {
     translateY.value = 0;
   }, [messages]);
 
+  // handle online users and notifictions:
+  console.log(`Online users:`, onlineUsers);
+
   const renderItem = ({item}) => (
     <Animated.View style={[animatedStyle, {marginBottom: 10}]}>
       <View
@@ -254,7 +290,12 @@ const ChatScreen: React.FC<ChatScreenProp> = ({route}) => {
   );
 
   return (
-    <SafeAreaView className="bg-primary h-full">
+    // <KeyboardAwareScrollView
+
+    // behavior={Platform.OS === 'android' ? 'padding' : "padding"}
+    // style={{flex: 1}}
+    // >
+    <SafeAreaView className="h-full flex-1 bg-primary">
       <View className="flex flex-row justify-around items-center">
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -268,12 +309,16 @@ const ChatScreen: React.FC<ChatScreenProp> = ({route}) => {
 
         <View className="flex flex-row justify-between gap-x-3 items-center">
           <View
-            className="flex justify-center items-center p-3 rounded-full"
-            style={{backgroundColor: '#FFF6D8'}}>
-            <Text className="text-3xl object-contain">🏀 </Text>
+            className="flex justify-center items-center p-5 rounded-full "
+            style={{backgroundColor: background}}>
+            <Text className="scale-150">{emoji} </Text>
           </View>
           <View className="flex items">
-            <Text className="text-white font-bold text-xl">Dumb Chat</Text>
+            <Text className="text-white font-bold text-xl">
+              {groupName?.length > 18
+                ? groupName.substring(0, 18) + '...'
+                : groupName}
+            </Text>
             <Text className="text-black-200">online</Text>
           </View>
         </View>
@@ -289,15 +334,11 @@ const ChatScreen: React.FC<ChatScreenProp> = ({route}) => {
         <BottomSheetFlatList
           style={{flex: 1, padding: 10, marginBottom: 100}}
           ref={flatListRef}
-          data={messages}
+          data={messages ?? []}
           keyExtractor={(item, index) => index.toString()}
           renderItem={renderItem}
-          ListHeaderComponent={
-            <Text className="text-lg self-center text-center px-3 py-2 rounded-2xl text-white bg-purple">
-              today
-            </Text>
-          }
-          onContentSizeChange={() =>
+          ListHeaderComponent={<View className="h-3" />}   
+          onContentSizeChange={() => 
             flatListRef.current?.scrollToEnd({animated: true})
           }
         />
@@ -312,11 +353,13 @@ const ChatScreen: React.FC<ChatScreenProp> = ({route}) => {
       {selectedImage && (
         <View className=" bottom-24 py-2 px-5 absolute">
           <TouchableOpacity
-          onPress={CancelUploadImage}
-          className=' top-8 z-20 w-8 h-8 rounded-full p-2 bg-red-500 left-0 ' />
+            onPress={CancelUploadImage}
+            className=" top-8 z-20 w-8 h-8 rounded-full p-2 bg-red-500 left-0 "
+          />
           <Image className="w-32 h-32 " source={{uri: selectedImage?.uri}} />
         </View>
       )}
+
       <View className="bg-secondary flex flex-row justify-between gap-x-2 w-[93%] self-center bottom-9 absolute px-1 rounded-full py-2">
         <View className="flex flex-row items-center w-[70%]">
           <TouchableOpacity
@@ -331,7 +374,7 @@ const ChatScreen: React.FC<ChatScreenProp> = ({route}) => {
           <TextInput
             placeholder="Message..."
             placeholderTextColor={'#C5C6CC'}
-            className="flex-start h-6 pl-2"
+            className="flex-start pl-2"
             multiline={true}
             value={newMessage}
             onChangeText={text => setNewMessage(text)}
@@ -350,6 +393,7 @@ const ChatScreen: React.FC<ChatScreenProp> = ({route}) => {
         </TouchableOpacity>
       </View>
     </SafeAreaView>
+    // </KeyboardAwareScrollView>
   );
 };
 

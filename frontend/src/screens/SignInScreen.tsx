@@ -1,4 +1,4 @@
-import {View, Text, TextInput, TouchableOpacity} from 'react-native';
+import {View, Text, TextInput, TouchableOpacity, Platform} from 'react-native';
 import React, {useState} from 'react';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {RootStackParamList} from '../types';
@@ -17,7 +17,7 @@ const SignInScreen = () => {
   const handleSignIn = async () => {
     try {
       // Send request to your backend
-      const response = await axios.post('http://192.168.1.8:4000/api/auth', {
+      const response = await axios.post(`http://${Platform.OS === 'ios' ? "localhost" : "10.0.2.2"}:4000/api/auth`, {
         username: nickname,
         password,
       });

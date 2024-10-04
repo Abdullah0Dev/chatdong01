@@ -7,12 +7,9 @@ const getAllMessages = async (req, res) => {
     const { groupName } = req.params;
 
     // Fetch messages for the specified group and sort them by timestamp in ascending order
-    const groupMessages = await Messages.find({ groupName }).sort({ timestamp: 1 });
-
-    // Check if any messages were found
-    if (!groupMessages || groupMessages.length === 0) {
-      return res.status(404).json({ message: "No messages found for this group" });
-    }
+    const groupMessages = await Messages.find({ groupName }).sort({
+      timestamp: 1,
+    });
 
     // Return the messages with a 200 status
     return res.status(200).json(groupMessages);
@@ -32,7 +29,9 @@ const newMessage = async (req, res) => {
     const { message, timestamp, sender } = req.body;
 
     if (!message || !timestamp || !sender) {
-      return res.status(400).json({ message: "Please fill in all required fields" });
+      return res
+        .status(400)
+        .json({ message: "Please fill in all required fields" });
     }
 
     if (sender !== "me" && sender !== "other") {
@@ -51,15 +50,16 @@ const newMessage = async (req, res) => {
 
     // Emit the new message to all connected clients
     const io = req.app.get("socketio");
-    io.emit("newMessage", newMsg);  // Broadcast the new message
+    io.emit("newMessage", newMsg); // Broadcast the new message
 
     return res.status(201).json(newMsg);
   } catch (error) {
     console.error("Server Error:", error.message);
-    return res.status(500).json({ message: "Server error, please try again later" });
+    return res
+      .status(500)
+      .json({ message: "Server error, please try again later" });
   }
 };
-
 
 // Update message
 const updateMessage = async (req, res) => {

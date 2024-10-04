@@ -2,7 +2,7 @@ export type RootStackParamList = {
   Welcome: undefined;
   Home: {name: string};
   SignIn: undefined;
-  Chat: {groupName: string | undefined, username: string};
+  Chat: {groupName: string , username: string | undefined, background: string , emoji: string  };
 };
 
 export type RootTabParamList = {

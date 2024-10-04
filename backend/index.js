@@ -9,6 +9,7 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs").promises; // Use promises for async file operations
 const { ClarifaiStub, grpc } = require("clarifai-nodejs-grpc");
+const { hostname } = require("os");
 const stub = ClarifaiStub.grpc();
 const metadata = new grpc.Metadata();
 metadata.set("authorization", `Key ${process.env.CLARIFAI_API_KEY}`);
@@ -24,10 +25,20 @@ const io = new Server(server, {
     methods: ["GET", "POST"],
   },
 });
+let onlineUsers = [];
 
 io.on("connection", (socket) => {
   console.log("A user connected with ID:", socket.id);
-
+  // add new user
+  socket.on("new-user-add", (newUserId) => {
+    if (!onlineUsers.some((user) => user.userId === newUserId)) {
+      // if user is not added before
+      onlineUsers.push({ userId: newUserId, socketId: socket.id });
+      console.log("new user is here!", onlineUsers);
+    }
+    // send all active users to new user
+    io.emit("get-users", onlineUsers);
+  });
   socket.on("joinRoom", (room) => {
     socket.join(room);
   });
@@ -60,6 +71,17 @@ io.on("connection", (socket) => {
 
   socket.on("disconnect", () => {
     console.log("A user disconnected:", socket.id);
+    onlineUsers = onlineUsers.filter((user) => user.socketId !== socket.id); // remove the user that logged out
+    console.log("user disconnected", onlineUsers);
+    // send all online users to all users
+    io.emit("get-users", onlineUsers);
+  });
+  socket.on("offline", () => {
+    // remove user from active users
+    onlineUsers = onlineUsers.filter((user) => user.socketId !== socket.id);
+    console.log("user is offline", onlineUsers);
+    // send all online users to all users
+    io.emit("get-users", onlineUsers);
   });
 });
 
@@ -72,10 +94,10 @@ const upload = multer({
 }).single("myFile");
 
 // Serve static files from the 'uploads' directory
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/api/messages", require("./routes/chat"));
 app.use("/api/auth", require("./routes/auth"));
-
+app.use("/api/groups", require("./routes/group"));
 app.post("/api/upload", (req, res) => {
   upload(req, res, async (err) => {
     if (err) {
@@ -120,14 +142,20 @@ app.post("/api/upload", (req, res) => {
       });
 
       const description = response.outputs[0].data.concepts[0].name;
-      const newFilename = `${description}_${Date.now()}${path.extname(req.file.originalname)}`;
+      const newFilename = `${description}_${Date.now()}${path.extname(
+        req.file.originalname
+      )}`;
       const filePath = path.join(__dirname, "uploads", newFilename);
 
       // Save the file asynchronously
       await fs.writeFile(filePath, req.file.buffer);
+      const protocol = req.protocol;
 
-      const fileUrl = `${req.protocol}://${req.get("host")}/uploads/${newFilename}`;
+      const fileUrl = `${req.protocol}://${req.get(
+        "host"
+      )}/uploads/${newFilename}`;
       res.status(200).json({ url: fileUrl });
+      console.log(protocol);
     } catch (error) {
       console.error("Error fetching image description:", error);
       res.status(500).json({ error: "Image recognition failed" });
