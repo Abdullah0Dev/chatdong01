@@ -31,12 +31,10 @@ import CustomKeyboard from '../components/CustomWrapper';
 import {KeyboardAwareScrollView} from 'react-native-keyboard-aware-scroll-view';
 import Notifications from '../Notification';
 
-const SOCKET_URL = `http://${
-  Platform.OS === 'ios' ? 'localhost' : '10.0.2.2'
-}:4000`;
+const SOCKET_URL = `https://chatdong01.onrender.com`;
 const socket = io(SOCKET_URL);
 // http://${Platform.OS === 'ios' ? "localhost" : "10.0.2.2"}:4000
-// http://${Platform.OS === 'ios' ? "localhost" : "10.0.2.2"}:4000
+// https://chatdong01.onrender.com
 interface Message {
   message: string;
   sender: 'me' | 'other';
@@ -107,9 +105,7 @@ const ChatScreen: React.FC<ChatScreenProp> = ({route}) => {
     const fetchMessages = async () => {
       try {
         const response = await axios.get(
-          `http://${
-            Platform.OS === 'ios' ? 'localhost' : '10.0.2.2'
-          }:4000/api/messages/${groupName}`,
+          `https://chatdong01.onrender.com/api/messages/${groupName}`,
         );
         setMessages(response.data);
         // console.log(`Messages`,response.data);
@@ -197,9 +193,7 @@ const ChatScreen: React.FC<ChatScreenProp> = ({route}) => {
 
         try {
           const response = await axios.post(
-            `http://${
-              Platform.OS === 'ios' ? 'localhost' : '10.0.2.2'
-            }:4000/api/upload/`,
+            `https://chatdong01.onrender.com/api/upload/`,
             data,
             {
               headers: {

@@ -36,7 +36,7 @@ interface MessagesTabProps {
   name: string;
 }
 
-const SOCKET_URL = `http://${Platform.OS === 'ios' ? "localhost" : "10.0.2.2"}:4000`;
+const SOCKET_URL = `https://chatdong01.onrender.com`;
 const socket = io(SOCKET_URL);
 const MessagesTab: React.FC<MessagesTabProps> = ({name}) => {
   const [modelIsOpened, setModelIsOpened] = useState(false);
@@ -56,12 +56,15 @@ const MessagesTab: React.FC<MessagesTabProps> = ({name}) => {
 
   useEffect(() => {
     const fetchGroups = async () => {
-      const response = await axios.get(`http://${Platform.OS === 'ios' ? "localhost" : "10.0.2.2"}:4000/api/groups/`, {
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
+      const response = await axios.get(
+        `https://chatdong01.onrender.com/api/groups/`,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
         },
-      });
+      );
 
       const data = await response.data;
 
@@ -74,12 +77,16 @@ const MessagesTab: React.FC<MessagesTabProps> = ({name}) => {
   const handleCreateGroup = async () => {
     try {
       // add new group
-      await axios.post(`http://${Platform.OS === 'ios' ? "localhost" : "10.0.2.2"}:4000/api/groups/`, groupForm, {
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
+      await axios.post(
+        `https://chatdong01.onrender.com/api/groups/`,
+        groupForm,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
         },
-      });
+      );
       setGroupForm({
         name: '',
         emoji: '',
@@ -351,7 +358,12 @@ const ChatItem: React.FC<ChatItemProps> = ({item, username}) => {
     socket.emit('joinRoom', item.name);
 
     // Navigate to the ChatScreen with the chat group name
-    navigation.navigate('Chat', {groupName: item.name, username: username, background: item.background, emoji: item.emoji});
+    navigation.navigate('Chat', {
+      groupName: item.name,
+      username: username,
+      background: item.background,
+      emoji: item.emoji,
+    });
   };
   return (
     <TouchableOpacity
