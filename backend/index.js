@@ -151,7 +151,7 @@ app.post("/api/upload", (req, res) => {
       await fs.writeFile(filePath, req.file.buffer);
       const protocol = req.protocol;
 
-      const fileUrl = `${req.protocol}://${req.get(
+      const fileUrl = `https://${req.get(
         "host"
       )}/uploads/${newFilename}`;
       res.status(200).json({ url: fileUrl });

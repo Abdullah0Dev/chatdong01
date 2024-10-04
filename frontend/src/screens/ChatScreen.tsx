@@ -47,7 +47,6 @@ type ChatScreenProp = {
 
 const ChatScreen: React.FC<ChatScreenProp> = ({route}) => {
   const {groupName, username, background, emoji} = route.params;
-  console.log(`BG:`, background);
 
   const [isTyping, setIsTyping] = useState(false);
   const [newMessage, setNewMessage] = useState('');
@@ -251,9 +250,7 @@ const ChatScreen: React.FC<ChatScreenProp> = ({route}) => {
     opacity.value = 1;
     translateY.value = 0;
   }, [messages]);
-
-  // handle online users and notifictions:
-  console.log(`Online users:`, onlineUsers);
+ 
 
   const renderItem = ({item}) => (
     <Animated.View style={[animatedStyle, {marginBottom: 10}]}>
